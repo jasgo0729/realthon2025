@@ -1,36 +1,30 @@
-// src/App.js
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import { IMessage } from './types/chat';
 
-const BACKEND_URL = 'http:/localhost:4000';
-// userId는 세션별 고유값으로 설정
+const BACKEND_URL = 'http://localhost:4000';
 const currentUserId = `USER-${Math.floor(Math.random() * 9000) + 1000}`; 
 const currentUsername = `Guest-${currentUserId.slice(-4)}`;
 
 const socket = io(BACKEND_URL)
 
 function App() {
-  const [currentRoomId, setCurrentRoomId] = useState(''); // 현재 접속할 방 ID
+  const [currentRoomId, setCurrentRoomId] = useState('');
   const [currentMessage, setCurrentMessage] = useState('');
   const [messageList, setMessageList] = useState<IMessage[]>([]);
-  const [joined, setJoined] = useState(false); // 방에 접속했는지 여부
+  const [joined, setJoined] = useState(false);
 
-  // 1. **방 접속 함수**
   const joinRoom = () => {
     if (currentRoomId !== '') {
-      // 서버에 'join_room' 이벤트와 함께 방 ID 전송
       socket.emit('joinRoom', currentRoomId);
       setJoined(true);
-      setMessageList([]); // 새 방에 들어가면 메시지 목록 초기화
+      setMessageList([]);
       console.log(`${currentUsername} joined room: ${currentRoomId}`);
     }
   };
 
-  // 2. **메시지 전송 함수**
   const sendMessage = async () => {
     if (currentMessage !== '' && joined) {
-      // 서버에서 요구하는 메시지 객체 구조 (username, userId, roomId, content)
       const messageData: IMessage = {
         roomId: currentRoomId,
         username: currentUsername,
@@ -38,18 +32,44 @@ function App() {
         content: currentMessage
       };
 
-      // 'send_message' 이벤트와 함께 서버로 데이터 전송
       await socket.emit('sendMessage', messageData);
       
-      // 자신의 메시지를 화면에 즉시 표시 (UX 개선)
       setMessageList((list) => [...list, messageData]); 
       setCurrentMessage('');
     }
   };
 
-  // 3. 실시간 메시지 수신 로직
+  const saveMessage = () => {
+    let result = "";
+    messageList.forEach((message: IMessage) => {
+      result += message.username + ": " + message.content + " ";
+    });
+    console.log(result);
+    // const saveFile = async (blob: any) => {
+    //   const a = document.createElement('a');
+    //   a.download = 'my-file.txt';
+    //   a.href = URL.createObjectURL(blob);
+    //   a.addEventListener('click', (e) => {
+    //     setTimeout(() => URL.revokeObjectURL(a.href), 30 * 1000);
+    //   });
+    //   a.click();
+    // };
+    // saveFile(new Blob([result]));
+    fetch("http://localhost:8000/assign-roles", {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json' // 필수!
+      },
+      body: JSON.stringify({
+        conversation_text: result,
+        target_situation: "프로젝트 발표에 맞는 역할 분배"
+      })
+    }).then((res) => res.json()).then(data => {
+      console.log(data);
+    });
+  }
+
   useEffect(() => {
-    // 서버로부터 'receive_message' 이벤트를 수신하여 메시지 목록 업데이트
     socket.on('message', (data) => {
       if (data.userId != currentUserId) {
         setMessageList((list) => [...list, data]);
@@ -66,7 +86,6 @@ function App() {
       <h1>Socket.IO Chat App</h1>
       <p>현재 사용자: **{currentUsername}** ({currentUserId})</p>
       
-      {/* 방 접속 UI */}
       {!joined ? (
         <div style={{ marginBottom: '20px' }}>
           <input
@@ -83,8 +102,6 @@ function App() {
       ) : (
         <>
           <h2>현재 접속 방: {currentRoomId}</h2>
-
-          {/* 메시지 표시 영역 */}
           <div style={{ border: '1px solid #ccc', height: '300px', overflowY: 'auto', marginBottom: '10px', padding: '10px' }}>
             {messageList?.map((msg, index) => (
               <div 
@@ -109,8 +126,6 @@ function App() {
               </div>
             ))}
           </div>
-
-          {/* 메시지 입력 영역 */}
           <input
             type="text"
             placeholder="메시지 입력..."
@@ -127,6 +142,8 @@ function App() {
           <button onClick={sendMessage} style={{ padding: '8px 15px' }} disabled={!joined}>
             전송
           </button>
+          <br />
+          <button onClick={saveMessage}>Save Messages</button>
         </>
       )}
     </div>

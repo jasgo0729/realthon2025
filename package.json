@@ -19,10 +19,10 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "test": "react-scripts start",
+    "start": "HOST=0.0.0.0 react-scripts start",
     "server": "ts-node -P tsconfig.server.json server.ts",
     "dev": "nodemon --exec ts-node -P tsconfig.server.json server.ts",
-    "start": "ts-node -P tsconfig.server.json server.ts & HOST=0.0.0.0 react-scripts start"
+    "test": "ts-node -P tsconfig.server.json server.ts & react-scripts start"
   },
   "eslintConfig": {
     "extends": [
