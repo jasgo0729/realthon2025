@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import { IMessage } from './types/chat';
+import { appendMessage, assignRoles, getAgentResponse, parseAssignedRoles } from './util/ai_request';
+import MbtiResultDisplay from './components/MbtiResultDisplay';
 
 const BACKEND_URL = 'http://localhost:4000';
 const currentUserId = `USER-${Math.floor(Math.random() * 9000) + 1000}`; 
@@ -13,6 +15,10 @@ function App() {
   const [currentMessage, setCurrentMessage] = useState('');
   const [messageList, setMessageList] = useState<IMessage[]>([]);
   const [joined, setJoined] = useState(false);
+  const [roleResult, setRoleResult] = useState<string>();
+  const [canGetRoleResult, setCanGetRoleResult] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [rr, setRR] = useState();
 
   const joinRoom = () => {
     if (currentRoomId !== '') {
@@ -25,6 +31,7 @@ function App() {
 
   const sendMessage = async () => {
     if (currentMessage !== '' && joined) {
+      setIsLoading(true);
       const messageData: IMessage = {
         roomId: currentRoomId,
         username: currentUsername,
@@ -32,14 +39,31 @@ function App() {
         content: currentMessage
       };
 
-      await socket.emit('sendMessage', messageData);
+      socket.emit('sendMessage', messageData);
+
+      await appendMessage(messageData);
       
       setMessageList((list) => [...list, messageData]); 
       setCurrentMessage('');
+
+      let random = Math.floor(Math.random() * 2);
+      if (random == 1) {
+        console.log("agent response!")
+        let response = await getAgentResponse(currentRoomId);
+        const agentMsgData: IMessage = {
+          roomId: currentRoomId,
+          username: response.agent_name,
+          userId: response.agent_name,
+          content: response.agent_response
+        };
+        socket.emit('sendMessage', agentMsgData)
+      }
     }
+    setIsLoading(false);
   };
 
-  const saveMessage = () => {
+  const saveMessage = async () => {
+    setIsLoading(true);
     let result = "";
     messageList.forEach((message: IMessage) => {
       result += message.username + ": " + message.content + " ";
@@ -55,18 +79,16 @@ function App() {
     //   a.click();
     // };
     // saveFile(new Blob([result]));
-    fetch("http://localhost:8000/assign-roles", {
-      method: "POST",
-      headers: {
-        'Content-Type': 'application/json' // 필수!
-      },
-      body: JSON.stringify({
-        conversation_text: result,
-        target_situation: "프로젝트 발표에 맞는 역할 분배"
-      })
-    }).then((res) => res.json()).then(data => {
-      console.log(data);
-    });
+    let role = await assignRoles(result, "");
+    setRoleResult(role);
+    setCanGetRoleResult(true);
+    setIsLoading(false);
+  }
+
+  const getRoleResult = () => {
+    let result = parseAssignedRoles(roleResult!)
+    console.log(result);
+    setRR(result);
   }
 
   useEffect(() => {
@@ -137,13 +159,15 @@ function App() {
               event.key === 'Enter' && sendMessage();
             }}
             style={{ padding: '8px', marginRight: '5px', width: '70%' }}
-            disabled={!joined}
+            disabled={!joined || isLoading}
           />
-          <button onClick={sendMessage} style={{ padding: '8px 15px' }} disabled={!joined}>
+          <button onClick={sendMessage} style={{ padding: '8px 15px' }} disabled={!joined || isLoading}>
             전송
           </button>
           <br />
-          <button onClick={saveMessage}>Save Messages</button>
+          <button onClick={saveMessage} disabled={isLoading} >Save Messages</button>
+          <button onClick={getRoleResult} disabled={!canGetRoleResult}>Get Result!</button>
+          <MbtiResultDisplay results={rr} username={currentUsername}></MbtiResultDisplay>
         </>
       )}
     </div>

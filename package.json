@@ -19,7 +19,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "HOST=0.0.0.0 react-scripts start",
+    "start": "react-scripts start",
     "server": "ts-node -P tsconfig.server.json server.ts",
     "dev": "nodemon --exec ts-node -P tsconfig.server.json server.ts",
     "test": "ts-node -P tsconfig.server.json server.ts & react-scripts start"
