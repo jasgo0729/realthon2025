@@ -1,0 +1,17 @@
+// tsconfig.server.json
+{
+    "compilerOptions": {
+      // 💡 Node.js 표준 모듈 시스템인 CommonJS로 설정
+      "module": "CommonJS", 
+      "target": "ES2020",
+      "esModuleInterop": true,
+      "moduleResolution": "node", 
+      "strict": true,
+      "skipLibCheck": true,
+      "outDir": "./dist/server" // 컴파일된 JS 파일 경로
+    },
+    "include": [
+      "server.ts", // 백엔드 진입점 파일
+      "src/types/**/*.ts" // 백엔드와 공유하는 타입 파일
+    ]
+  }
